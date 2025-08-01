@@ -1,6 +1,5 @@
-# zifast
-
+ip
 
 ```
-curl -sSL https://raw.githubusercontent.com/Tozuck/zifast/main/zifast.sh | bash
+curl -sSL https://raw.githubusercontent.com/Tozuck/changeip/main/ip.sh | bash
 ```
