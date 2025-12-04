@@ -30,6 +30,7 @@ fi
 # DETECT THE IPV6 LINE AND EXTRACT INDENTATION
 ###############################################
 IPV6_LINE=$((ADDR_LINE + 1))
+
 IPV6_CONTENT=$(sed -n "${IPV6_LINE}p" "$FILE")
 
 # If not IPv6, find the IPv6 manually
