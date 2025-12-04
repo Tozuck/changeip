@@ -29,11 +29,10 @@ fi
 ###############################################
 # DETECT THE IPV6 LINE AND EXTRACT INDENTATION
 ###############################################
-# OVH ALWAYS HAS ONE IPv6 AFTER addresses:
 IPV6_LINE=$((ADDR_LINE + 1))
 IPV6_CONTENT=$(sed -n "${IPV6_LINE}p" "$FILE")
 
-# If this is not IPv6, search for the first 2001: IPv6 line under ens3
+# If not IPv6, find the IPv6 manually
 if ! echo "$IPV6_CONTENT" | grep -q "2001:"; then
     IPV6_LINE=$(awk '
       $0 ~ /ens3:/        {in_iface=1}
@@ -44,31 +43,31 @@ if ! echo "$IPV6_CONTENT" | grep -q "2001:"; then
 fi
 
 if [[ -z "$IPV6_LINE" ]]; then
-    echo "ERROR: Could not find IPv6 routed line under ens3."
+    echo "ERROR: Could not find IPv6 routed address."
     exit 1
 fi
 
-# Extract EXACT indentation from IPv6 list item
+# Extract correct indentation (e.g. "        - ")
 ITEM_INDENT=$(echo "$IPV6_CONTENT" | sed -E 's/(^[[:space:]]*- ).*/\1/')
 
 echo "Detected OVH indentation: '$ITEM_INDENT'"
 
 ###############################################
-# BACKUP BEFORE APPLYING
+# BACKUP FILE
 ###############################################
 cp "$FILE" "$FILE.bak"
 
 ###############################################
-# INSERT IPv4 ABOVE THE IPv6 ADDRESS
+# INSERT IPv4 ABOVE IPv6
 ###############################################
 sed -i "${IPV6_LINE}i ${ITEM_INDENT}${IPADDR}/32" "$FILE"
 
 ###############################################
-# VALIDATE YAML BEFORE APPLYING
+# VALIDATE YAML
 ###############################################
 echo "Validating YAML..."
 if ! netplan try; then
-    echo "ERROR: Invalid YAML, restoring original file."
+    echo "ERROR: Invalid YAML — restoring backup."
     mv "$FILE.bak" "$FILE"
     exit 1
 fi
@@ -78,8 +77,7 @@ rm -f "$FILE.bak"
 ###############################################
 # APPLY CONFIG
 ###############################################
-echo "Applying OVH network config..."
+echo "Applying config..."
 netplan apply
 
 echo "SUCCESS! Added $IPADDR/32"
- 
