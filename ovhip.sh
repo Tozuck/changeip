@@ -82,3 +82,4 @@ echo "Applying OVH network config..."
 netplan apply
 
 echo "SUCCESS! Added $IPADDR/32"
+ 
