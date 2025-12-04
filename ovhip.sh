@@ -8,49 +8,29 @@ if [[ -z "$IPADDR" ]]; then
     exit 1
 fi
 
-FILE=$(ls /etc/netplan/*.yaml | head -n 1)
+# OVH always uses one netplan file
+FILE="/etc/netplan/50-cloud-init.yaml"
 
 echo "Using netplan file: $FILE"
 
-# Find 'addresses:' only under ens3:, not under nameservers:
+###############################################
+# 1. Locate the real addresses: block for ens3
+#    NOT the DNS nameserver addresses block
+###############################################
 ADDR_LINE=$(awk '
-  $0 ~ /ens3:/ {in_iface=1}
+  $0 ~ /ens3:/        {in_iface=1}
   $0 ~ /nameservers:/ {in_iface=0}
   in_iface && $0 ~ /^[[:space:]]*addresses:/ {print NR}
 ' "$FILE")
 
 if [[ -z "$ADDR_LINE" ]]; then
-    echo "ERROR: Could not find interface addresses block."
+    echo "ERROR: Could not locate the correct addresses: block under ens3."
     exit 1
 fi
 
-# Get next line to detect indentation
-NEXT_LINE=$(sed -n "$((ADDR_LINE+1))p" "$FILE")
-
-if echo "$NEXT_LINE" | grep -q "^[[:space:]]*- "; then
-    ITEM_INDENT=$(echo "$NEXT_LINE" | sed -E 's/(^[[:space:]]*- ).*/\1/')
-else
-    ADDR_INDENT=$(sed -n "${ADDR_LINE}p" "$FILE" | sed -E 's/(^[[:space:]]*).*/\1/')
-    ITEM_INDENT="${ADDR_INDENT}  - "
-fi
-
-echo "Detected correct indent: '$ITEM_INDENT'"
-
-cp "$FILE" "$FILE.bak"
-
-# Insert IPv4 under the correct addresses block
-sed -i "$((ADDR_LINE+1)) i ${ITEM_INDENT}${IPADDR}/32" "$FILE"
-
-echo "Validating YAML..."
-if ! netplan try; then
-    echo "Invalid YAML — restoring backup."
-    mv "$FILE.bak" "$FILE"
-    exit 1
-fi
-
-rm -f "$FILE.bak"
-
-echo "Applying config..."
-netplan apply
-
-echo "SUCCESS! Added $IPADDR/32"
+###############################################
+# 2. OVH always has a routed IPv6 that looks like:
+#      - "2001:xxxx/128"
+#    We read indentation from THAT line
+###############################################
+IPV6_LI_
